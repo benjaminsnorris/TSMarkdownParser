@@ -144,6 +144,9 @@ typedef NSFont UIFont;
         if (!weakParser.skipLinkAttribute) {
             NSURL *url = [NSURL URLWithString:link] ?: [NSURL URLWithString:
                                                         [link stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+            if (!url.scheme) {
+                url = [NSURL URLWithString: [NSString stringWithFormat: @"http://%@", url.absoluteString]];
+            }
             if (url) {
                 [attributedString addAttribute:NSLinkAttributeName
                                          value:url
@@ -174,6 +177,9 @@ typedef NSFont UIFont;
             }
             NSURL *url = [NSURL URLWithString:link] ?: [NSURL URLWithString:
                                                         [link stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+            if (!url.scheme) {
+                url = [NSURL URLWithString: [NSString stringWithFormat: @"http://%@", url.absoluteString]];
+            }
 
             [attributedString addAttribute:NSLinkAttributeName
                                      value:url
