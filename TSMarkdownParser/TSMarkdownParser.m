@@ -247,9 +247,11 @@ static NSString *const TSMarkdownLinkRegex          = @"\\[[^\\[]*?\\]\\([^\\)]*
 
 // inline enclosed regex
 static NSString *const TSMarkdownMonospaceRegex     = @"(`+)(\\s*.*?[^`]\\s*)(\\1)(?!`)";
-static NSString *const TSMarkdownStrongRegex        = @"(^|[\\W_])(?:(?!\\1)|(?=^))(\\*|_)\\2(?=\\S)(.*?\\S)\\2\\2(?!\\2)(?=[\\W_]|$)";
-static NSString *const TSMarkdownEmRegex            = @"(^|[\\W_])(?:(?!\\1)|(?=^))(\\*|_)(?=\\S)((?:(?!\\2).)*?\\S)\\2(?!\\2)(?=[\\W_]|$)";
+static NSString *const TSMarkdownStrongRegex        = @"(\\*\\*|__)(.+?)(\\1)";
+static NSString *const TSMarkdownEmRegex            = @"(\\*|_)(.+?)(\\1)";
 static NSString *const TSMarkdownStrongEmRegex      = @"(((\\*\\*\\*)(.|\\s)*(\\*\\*\\*))|((___)(.|\\s)*(___)))";
+static NSString *const TSMarkdownStrongWithSyntaxRegex        = @"(^|[\\W_])(?:(?!\\1)|(?=^))(\\*|_)\\2(?=\\S)(.*?\\S)\\2\\2(?!\\2)(?=[\\W_]|$)";
+static NSString *const TSMarkdownEmWithSyntaxRegex            = @"(^|[\\W_])(?:(?!\\1)|(?=^))(\\*|_)(?=\\S)((?:(?!\\2).)*?\\S)\\2(?!\\2)(?=[\\W_]|$)";
 
 #pragma mark escaping parsing
 
@@ -443,11 +445,19 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(((\\*\\*\\*)(.|\\s)*(\\
 }
 
 - (void)addStrongParsingWithFormattingBlock:(void(^)(NSMutableAttributedString *attributedString, NSRange range))formattingBlock {
-    [self addEnclosedParsingWithPattern:TSMarkdownStrongRegex formattingBlock:formattingBlock];
+    if (self.markdownSyntaxRemoved) {
+        [self addEnclosedParsingWithPattern:TSMarkdownStrongRegex formattingBlock:formattingBlock];
+    } else {
+        [self addEnclosedParsingWithPattern:TSMarkdownStrongWithSyntaxRegex formattingBlock:formattingBlock];
+    }
 }
 
 - (void)addEmphasisParsingWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
-    [self addEnclosedParsingWithPattern:TSMarkdownEmRegex formattingBlock:formattingBlock];
+    if (self.markdownSyntaxRemoved) {
+        [self addEnclosedParsingWithPattern:TSMarkdownEmRegex formattingBlock:formattingBlock];
+    } else {
+        [self addEnclosedParsingWithPattern:TSMarkdownEmWithSyntaxRegex formattingBlock:formattingBlock];
+    }
 }
 
 - (void)addStrongAndEmphasisParsingWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
