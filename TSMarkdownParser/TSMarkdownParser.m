@@ -192,7 +192,9 @@ typedef NSFont UIFont;
                                      value:url
                                      range:range];
         }
-        [attributedString addAttributes:weakParser.linkAttributes range:range];
+        if (weakParser.markdownSyntaxRemoved) {
+            [attributedString addAttributes:weakParser.linkAttributes range:range];
+        }
     }];
     
     /* inline parsing */
@@ -400,25 +402,25 @@ static NSString *const TSMarkdownEmWithSyntaxRegex            = @"(^|[\\W_])(?:(
 }
 
 - (void)addLinkParsingWithLinkFormattingBlock:(TSMarkdownParserLinkFormattingBlock)formattingBlock {
-    NSRegularExpression *linkParsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownLinkRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
-    
-    [self addParsingRuleWithRegularExpression:linkParsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-        NSUInteger linkStartInResult = [attributedString.string rangeOfString:@"(" options:NSBackwardsSearch range:match.range].location;
-        NSRange linkRange = NSMakeRange(linkStartInResult, match.range.length + match.range.location - linkStartInResult - 1);
-        NSString *linkURLString = [attributedString.string substringWithRange:NSMakeRange(linkRange.location + 1, linkRange.length - 1)];
+    if (self.markdownSyntaxRemoved) {
+        NSRegularExpression *linkParsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownLinkRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
         
-        // TODO: Preserve formatting if needed
-        
-        // deleting trailing markdown
-        // needs to be called before formattingBlock to support modification of length
-        [attributedString deleteCharactersInRange:NSMakeRange(linkRange.location - 1, linkRange.length + 2)];
-        // deleting leading markdown
-        // needs to be called before formattingBlock to provide a stable range
-        [attributedString deleteCharactersInRange:NSMakeRange(match.range.location, 1)];
-        // formatting link
-        // needs to be called last (may alter the length and needs range to be stable)
-        formattingBlock(attributedString, NSMakeRange(match.range.location, linkStartInResult - match.range.location - 2), linkURLString);
-    }];
+        [self addParsingRuleWithRegularExpression:linkParsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
+            NSUInteger linkStartInResult = [attributedString.string rangeOfString:@"(" options:NSBackwardsSearch range:match.range].location;
+            NSRange linkRange = NSMakeRange(linkStartInResult, match.range.length + match.range.location - linkStartInResult - 1);
+            NSString *linkURLString = [attributedString.string substringWithRange:NSMakeRange(linkRange.location + 1, linkRange.length - 1)];
+            
+            // deleting trailing markdown
+            // needs to be called before formattingBlock to support modification of length
+            [attributedString deleteCharactersInRange:NSMakeRange(linkRange.location - 1, linkRange.length + 2)];
+            // deleting leading markdown
+            // needs to be called before formattingBlock to provide a stable range
+            [attributedString deleteCharactersInRange:NSMakeRange(match.range.location, 1)];
+            // formatting link
+            // needs to be called last (may alter the length and needs range to be stable)
+            formattingBlock(attributedString, NSMakeRange(match.range.location, linkStartInResult - match.range.location - 2), linkURLString);
+        }];
+    }
 }
 
 #pragma mark inline parsing
