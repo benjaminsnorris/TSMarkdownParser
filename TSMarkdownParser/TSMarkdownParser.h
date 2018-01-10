@@ -47,6 +47,11 @@ typedef void (^TSMarkdownParserLinkFormattingBlock)(NSMutableAttributedString *a
 @property (nonatomic, assign) BOOL skipLinkAttribute;
 
 /**
+ 
+ */
+@property (nonatomic, readonly) BOOL markdownSyntaxRemoved;
+
+/**
  Provides the following default parsing rules from below examples:
  * Escaping parsing
  * Code escaping parsing using monospaceAttributes
@@ -60,6 +65,11 @@ typedef void (^TSMarkdownParserLinkFormattingBlock)(NSMutableAttributedString *a
  * Emphasis using emphasisAttributes
  */
 + (instancetype)standardParser;
+
+/**
+ 
+ */
++ (instancetype)standardParserRemovingSyntax:(BOOL)markdownSyntaxRemoved;
 
 /*
  It is recommended to use `[TSMarkdownParser new]` for an empty markdown parser.

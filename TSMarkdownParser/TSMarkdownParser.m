@@ -19,6 +19,7 @@ typedef NSFont UIFont;
 @interface TSMarkdownParser()
 
 @property (nonatomic, assign) NSUInteger defaultSize;
+@property (nonatomic, assign) BOOL markdownSyntaxRemoved;
 
 @end
 
@@ -79,7 +80,13 @@ typedef NSFont UIFont;
 }
 
 + (instancetype)standardParser {
+    TSMarkdownParser *defaultParser = [self standardParserRemovingSyntax: YES];
+    return defaultParser;
+}
+
++ (instancetype)standardParserRemovingSyntax:(BOOL)markdownSyntaxRemoved {
     TSMarkdownParser *defaultParser = [self new];
+    defaultParser.markdownSyntaxRemoved = markdownSyntaxRemoved;
     
     __weak TSMarkdownParser *weakParser = defaultParser;
     
@@ -348,6 +355,8 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(((\\*\\*\\*)(.|\\s)*(\\
         NSRange linkRange = NSMakeRange(imagePathStart, match.range.length + match.range.location - imagePathStart - 1);
         NSString *imagePath = [attributedString.string substringWithRange:NSMakeRange(linkRange.location + 1, linkRange.length - 1)];
         
+        // TODO: Preserve formatting if needed
+        
         // deleting trailing markdown
         // needs to be called before formattingBlock to support modification of length
         [attributedString deleteCharactersInRange:NSMakeRange(linkRange.location - 1, linkRange.length + 2)];
@@ -372,6 +381,8 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(((\\*\\*\\*)(.|\\s)*(\\
         
         NSRange linkTextRange = NSMakeRange(match.range.location + 1, linkStartInResult - match.range.location - 2);
       
+        // TODO: Preserve formatting if needed
+        
         // deleting trailing markdown
         [attributedString deleteCharactersInRange:NSMakeRange(linkRange.location - 1, linkRange.length + 2)];
         // formatting link (may alter the length)
@@ -394,6 +405,8 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(((\\*\\*\\*)(.|\\s)*(\\
         NSRange linkRange = NSMakeRange(linkStartInResult, match.range.length + match.range.location - linkStartInResult - 1);
         NSString *linkURLString = [attributedString.string substringWithRange:NSMakeRange(linkRange.location + 1, linkRange.length - 1)];
         
+        // TODO: Preserve formatting if needed
+        
         // deleting trailing markdown
         // needs to be called before formattingBlock to support modification of length
         [attributedString deleteCharactersInRange:NSMakeRange(linkRange.location - 1, linkRange.length + 2)];
@@ -412,12 +425,16 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(((\\*\\*\\*)(.|\\s)*(\\
 - (void)addEnclosedParsingWithPattern:(NSString *)pattern formattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
     NSRegularExpression *parsing = [NSRegularExpression regularExpressionWithPattern:pattern options:(NSRegularExpressionOptions)0 error:nil];
     [self addParsingRuleWithRegularExpression:parsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-        // deleting trailing markdown
-        [attributedString deleteCharactersInRange:[match rangeAtIndex:3]];
-        // formatting string (may alter the length)
-        formattingBlock(attributedString, [match rangeAtIndex:2]);
-        // deleting leading markdown
-        [attributedString deleteCharactersInRange:[match rangeAtIndex:1]];
+        if (self.markdownSyntaxRemoved) {
+            // deleting trailing markdown
+            [attributedString deleteCharactersInRange:[match rangeAtIndex:3]];
+            // formatting string (may alter the length)
+            formattingBlock(attributedString, [match rangeAtIndex:2]);
+            // deleting leading markdown
+            [attributedString deleteCharactersInRange:[match rangeAtIndex:1]];
+        } else {
+            formattingBlock(attributedString, [match rangeAtIndex:0]);
+        }
     }];
 }
 
