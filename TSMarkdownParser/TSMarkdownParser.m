@@ -256,10 +256,8 @@ static NSString *const TSMarkdownLinkRegex          = @"\\[[^\\[]*?\\]\\([^\\)]*
 // inline enclosed regex
 static NSString *const TSMarkdownMonospaceRegex     = @"(`+)(\\s*.*?[^`]\\s*)(\\1)(?!`)";
 static NSString *const TSMarkdownStrongRegex        = @"(\\*\\*|__)(.+?)(\\1)";
-static NSString *const TSMarkdownEmRegex            = @"(\\*|_)(.+?)(\\1)";
+static NSString *const TSMarkdownEmRegex            = @"(?<!\\*|_)(\\*|_)(?!\\1)(.+?)(\\1)";
 static NSString *const TSMarkdownStrongEmRegex      = @"(((\\*\\*\\*)(.|\\s)*(\\*\\*\\*))|((___)(.|\\s)*(___)))";
-static NSString *const TSMarkdownStrongWithSyntaxRegex        = @"(^|[\\W_])(?:(?!\\1)|(?=^))(\\*|_)\\2(?=\\S)(.*?\\S)\\2\\2(?!\\2)(?=[\\W_]|$)";
-static NSString *const TSMarkdownEmWithSyntaxRegex            = @"(^|[\\W_])(?:(?!\\1)|(?=^))(\\*|_)(?=\\S)((?:(?!\\2).)*?\\S)\\2(?!\\2)(?=[\\W_]|$)";
 
 #pragma mark escaping parsing
 
@@ -453,19 +451,11 @@ static NSString *const TSMarkdownEmWithSyntaxRegex            = @"(^|[\\W_])(?:(
 }
 
 - (void)addStrongParsingWithFormattingBlock:(void(^)(NSMutableAttributedString *attributedString, NSRange range))formattingBlock {
-    if (self.markdownSyntaxRemoved) {
-        [self addEnclosedParsingWithPattern:TSMarkdownStrongRegex formattingBlock:formattingBlock];
-    } else {
-        [self addEnclosedParsingWithPattern:TSMarkdownStrongWithSyntaxRegex formattingBlock:formattingBlock];
-    }
+    [self addEnclosedParsingWithPattern:TSMarkdownStrongRegex formattingBlock:formattingBlock];
 }
 
 - (void)addEmphasisParsingWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
-    if (self.markdownSyntaxRemoved) {
-        [self addEnclosedParsingWithPattern:TSMarkdownEmRegex formattingBlock:formattingBlock];
-    } else {
-        [self addEnclosedParsingWithPattern:TSMarkdownEmWithSyntaxRegex formattingBlock:formattingBlock];
-    }
+    [self addEnclosedParsingWithPattern:TSMarkdownEmRegex formattingBlock:formattingBlock];
 }
 
 - (void)addStrongAndEmphasisParsingWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
