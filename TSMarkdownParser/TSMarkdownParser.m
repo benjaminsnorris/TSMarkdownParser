@@ -99,26 +99,32 @@ typedef NSFont UIFont;
     /* block parsing */
     
     [defaultParser addHeaderParsingWithMaxLevel:0 leadFormattingBlock:^(NSMutableAttributedString *attributedString, NSRange range, __unused NSUInteger level) {
-        [attributedString deleteCharactersInRange:range];
+        if (weakParser.markdownSyntaxRemoved) {
+            [attributedString deleteCharactersInRange:range];
+        }
     } textFormattingBlock:^(NSMutableAttributedString *attributedString, NSRange range, NSUInteger level) {
         [TSMarkdownParser addAttributes:weakParser.headerAttributes atIndex:level - 1 toString:attributedString range:range];
     }];
     
     [defaultParser addListParsingWithMaxLevel:0 leadFormattingBlock:^(NSMutableAttributedString *attributedString, NSRange range, NSUInteger level) {
-        NSMutableString *listString = [NSMutableString string];
-        while (--level)
-            [listString appendString:@"\t"];
-        [listString appendString:@"•\t"];
-        [attributedString replaceCharactersInRange:range withString:listString];
+        if (weakParser.markdownSyntaxRemoved) {
+            NSMutableString *listString = [NSMutableString string];
+            while (--level)
+                [listString appendString:@"\t"];
+            [listString appendString:@"•\t"];
+            [attributedString replaceCharactersInRange:range withString:listString];
+        }
     } textFormattingBlock:^(NSMutableAttributedString *attributedString, NSRange range, NSUInteger level) {
         [TSMarkdownParser addAttributes:weakParser.listAttributes atIndex:level - 1 toString:attributedString range:range];
     }];
     
     [defaultParser addQuoteParsingWithMaxLevel:0 leadFormattingBlock:^(NSMutableAttributedString *attributedString, NSRange range, NSUInteger level) {
-        NSMutableString *quoteString = [NSMutableString string];
-        while (level--)
-            [quoteString appendString:@"\t"];
-        [attributedString replaceCharactersInRange:range withString:quoteString];
+        if (weakParser.markdownSyntaxRemoved) {
+            NSMutableString *quoteString = [NSMutableString string];
+            while (level--)
+                [quoteString appendString:@"\t"];
+            [attributedString replaceCharactersInRange:range withString:quoteString];
+        }
     } textFormattingBlock:^(NSMutableAttributedString * attributedString, NSRange range, NSUInteger level) {
         [TSMarkdownParser addAttributes:weakParser.quoteAttributes atIndex:level - 1 toString:attributedString range:range];
     }];
