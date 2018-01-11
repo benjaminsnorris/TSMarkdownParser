@@ -255,9 +255,9 @@ static NSString *const TSMarkdownLinkRegex          = @"\\[[^\\[]*?\\]\\([^\\)]*
 
 // inline enclosed regex
 static NSString *const TSMarkdownMonospaceRegex     = @"(`+)(\\s*.*?[^`]\\s*)(\\1)(?!`)";
-static NSString *const TSMarkdownStrongRegex        = @"(\\*\\*|__)(.+?)(\\1)";
-static NSString *const TSMarkdownEmRegex            = @"(?<!\\*|_)(\\*|_)(?!\\1)(.+?)(\\1)";
-static NSString *const TSMarkdownStrongEmRegex      = @"(((\\*\\*\\*)(.|\\s)*(\\*\\*\\*))|((___)(.|\\s)*(___)))";
+static NSString *const TSMarkdownStrongRegex        = @"(?<!\\*|_)(\\*\\*|__)(?<!\\*|_)(.+?)(\\1)";
+static NSString *const TSMarkdownEmRegex            = @"(?<!\\*|_)(\\*|_)(?!\\*|_)(.+?)(\\1)";
+static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+?)(\\3)(\\2)(\\1)";
 
 #pragma mark escaping parsing
 
@@ -459,7 +459,23 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(((\\*\\*\\*)(.|\\s)*(\\
 }
 
 - (void)addStrongAndEmphasisParsingWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
-    [self addEnclosedParsingWithPattern:TSMarkdownStrongEmRegex formattingBlock:formattingBlock];
+    NSRegularExpression *parsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownStrongEmRegex options:(NSRegularExpressionOptions)0 error:nil];
+    [self addParsingRuleWithRegularExpression:parsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
+        if (self.markdownSyntaxRemoved) {
+            // deleting trailing markdown
+            [attributedString deleteCharactersInRange:[match rangeAtIndex:7]];
+            [attributedString deleteCharactersInRange:[match rangeAtIndex:6]];
+            [attributedString deleteCharactersInRange:[match rangeAtIndex:5]];
+            // formatting string (may alter the length)
+            formattingBlock(attributedString, [match rangeAtIndex:4]);
+            // deleting leading markdown
+            [attributedString deleteCharactersInRange:[match rangeAtIndex:3]];
+            [attributedString deleteCharactersInRange:[match rangeAtIndex:2]];
+            [attributedString deleteCharactersInRange:[match rangeAtIndex:1]];
+        } else {
+            formattingBlock(attributedString, [match rangeAtIndex:0]);
+        }
+    }];
 }
 
 #pragma mark link detection
