@@ -263,26 +263,34 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 
 - (void)addCodeEscapingParsing {
     NSRegularExpression *parsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownCodeEscapingRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
+    __weak TSMarkdownParser *weakParser = self;
     [self addParsingRuleWithRegularExpression:parsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-        NSRange range = [match rangeAtIndex:2];
-        // escaping all characters
-        NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
-        NSUInteger i = 0;
-        NSMutableString *escapedString = [NSMutableString string];
-        while (i < range.length)
-            [escapedString appendFormat:@"%04x", [matchString characterAtIndex:i++]];
-        [attributedString replaceCharactersInRange:range withString:escapedString];
+        if (self.markdownSyntaxRemoved) {
+            NSRange range = [match rangeAtIndex:2];
+            // escaping all characters
+            NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
+            NSUInteger i = 0;
+            NSMutableString *escapedString = [NSMutableString string];
+            while (i < range.length)
+                [escapedString appendFormat:@"%04x", [matchString characterAtIndex:i++]];
+            [attributedString replaceCharactersInRange:range withString:escapedString];
+        } else {
+            NSRange range = [match rangeAtIndex:0];
+            [attributedString addAttributes:weakParser.monospaceAttributes range:range];
+        }
     }];
 }
 
 - (void)addEscapingParsing {
     NSRegularExpression *escapingParsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownEscapingRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
     [self addParsingRuleWithRegularExpression:escapingParsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-        NSRange range = NSMakeRange(match.range.location + 1, 1);
-        // escaping one character
-        NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
-        NSString *escapedString = [NSString stringWithFormat:@"%04x", [matchString characterAtIndex:0]];
-        [attributedString replaceCharactersInRange:range withString:escapedString];
+        if (self.markdownSyntaxRemoved) {
+            NSRange range = NSMakeRange(match.range.location + 1, 1);
+            // escaping one character
+            NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
+            NSString *escapedString = [NSString stringWithFormat:@"%04x", [matchString characterAtIndex:0]];
+            [attributedString replaceCharactersInRange:range withString:escapedString];
+        }
     }];
 }
 
@@ -329,6 +337,9 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 #pragma mark bracket parsing
 
 - (void)addImageParsingWithImageFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock alternativeTextFormattingBlock:(TSMarkdownParserFormattingBlock)alternativeFormattingBlock {
+    if (!self.markdownSyntaxRemoved) {
+        return;
+    }
     NSRegularExpression *headerExpression = [NSRegularExpression regularExpressionWithPattern:TSMarkdownImageRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
     [self addParsingRuleWithRegularExpression:headerExpression block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
         NSUInteger imagePathStart = [attributedString.string rangeOfString:@"(" options:(NSStringCompareOptions)0 range:match.range].location;
@@ -357,13 +368,14 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 }
 
 - (void)addImageParsingWithLinkFormattingBlock:(TSMarkdownParserLinkFormattingBlock)formattingBlock {
+    if (!self.markdownSyntaxRemoved) {
+        return;
+    }
     NSRegularExpression *headerExpression = [NSRegularExpression regularExpressionWithPattern:TSMarkdownImageRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
     [self addParsingRuleWithRegularExpression:headerExpression block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
         NSUInteger imagePathStart = [attributedString.string rangeOfString:@"(" options:(NSStringCompareOptions)0 range:match.range].location;
         NSRange linkRange = NSMakeRange(imagePathStart, match.range.length + match.range.location - imagePathStart - 1);
         NSString *imagePath = [attributedString.string substringWithRange:NSMakeRange(linkRange.location + 1, linkRange.length - 1)];
-        
-        // TODO: Preserve formatting if needed
         
         // deleting trailing markdown
         // needs to be called before formattingBlock to support modification of length
@@ -377,6 +389,7 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
     }];
 }
 
+// Deprecated: use addLinkParsingWithLinkFormattingBlock: instead
 - (void)addLinkParsingWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock __attribute__((deprecated("use addLinkParsingWithLinkFormattingBlock: instead"))) {
     NSRegularExpression *linkParsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownLinkRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
     
@@ -389,8 +402,6 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
         
         NSRange linkTextRange = NSMakeRange(match.range.location + 1, linkStartInResult - match.range.location - 2);
       
-        // TODO: Preserve formatting if needed
-        
         // deleting trailing markdown
         [attributedString deleteCharactersInRange:NSMakeRange(linkRange.location - 1, linkRange.length + 2)];
         // formatting link (may alter the length)
@@ -406,25 +417,26 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 }
 
 - (void)addLinkParsingWithLinkFormattingBlock:(TSMarkdownParserLinkFormattingBlock)formattingBlock {
-    if (self.markdownSyntaxRemoved) {
-        NSRegularExpression *linkParsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownLinkRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
-        
-        [self addParsingRuleWithRegularExpression:linkParsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-            NSUInteger linkStartInResult = [attributedString.string rangeOfString:@"(" options:NSBackwardsSearch range:match.range].location;
-            NSRange linkRange = NSMakeRange(linkStartInResult, match.range.length + match.range.location - linkStartInResult - 1);
-            NSString *linkURLString = [attributedString.string substringWithRange:NSMakeRange(linkRange.location + 1, linkRange.length - 1)];
-            
-            // deleting trailing markdown
-            // needs to be called before formattingBlock to support modification of length
-            [attributedString deleteCharactersInRange:NSMakeRange(linkRange.location - 1, linkRange.length + 2)];
-            // deleting leading markdown
-            // needs to be called before formattingBlock to provide a stable range
-            [attributedString deleteCharactersInRange:NSMakeRange(match.range.location, 1)];
-            // formatting link
-            // needs to be called last (may alter the length and needs range to be stable)
-            formattingBlock(attributedString, NSMakeRange(match.range.location, linkStartInResult - match.range.location - 2), linkURLString);
-        }];
+    if (!self.markdownSyntaxRemoved) {
+        return;
     }
+    NSRegularExpression *linkParsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownLinkRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
+    
+    [self addParsingRuleWithRegularExpression:linkParsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
+        NSUInteger linkStartInResult = [attributedString.string rangeOfString:@"(" options:NSBackwardsSearch range:match.range].location;
+        NSRange linkRange = NSMakeRange(linkStartInResult, match.range.length + match.range.location - linkStartInResult - 1);
+        NSString *linkURLString = [attributedString.string substringWithRange:NSMakeRange(linkRange.location + 1, linkRange.length - 1)];
+        
+        // deleting trailing markdown
+        // needs to be called before formattingBlock to support modification of length
+        [attributedString deleteCharactersInRange:NSMakeRange(linkRange.location - 1, linkRange.length + 2)];
+        // deleting leading markdown
+        // needs to be called before formattingBlock to provide a stable range
+        [attributedString deleteCharactersInRange:NSMakeRange(match.range.location, 1)];
+        // formatting link
+        // needs to be called last (may alter the length and needs range to be stable)
+        formattingBlock(attributedString, NSMakeRange(match.range.location, linkStartInResult - match.range.location - 2), linkURLString);
+    }];
 }
 
 #pragma mark inline parsing
@@ -458,6 +470,7 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
     [self addEnclosedParsingWithPattern:TSMarkdownEmRegex formattingBlock:formattingBlock];
 }
 
+// pattern matching is in multiple parts: (MD1)(MD2)(MD3)(string)(MD3)(MD2)(MD1), e.g. _**text**_, *__text__*, ***text***, ___text___
 - (void)addStrongAndEmphasisParsingWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
     NSRegularExpression *parsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownStrongEmRegex options:(NSRegularExpressionOptions)0 error:nil];
     [self addParsingRuleWithRegularExpression:parsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
@@ -480,7 +493,8 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 
 #pragma mark link detection
 
-- (void)addLinkDetectionWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock __attribute__((deprecated("use addLinkDetectionWithLinkFormattingBlock: instead"))) {
+// Deprecated: use addLinkParsingWithLinkFormattingBlock: instead
+- (void)addLinkDetectionWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock __attribute__((deprecated("use addLinkParsingWithLinkFormattingBlock: instead"))) {
     NSDataDetector *linkDataDetector = [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink error:nil];
     [self addParsingRuleWithRegularExpression:linkDataDetector block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
         NSString *linkURLString = [attributedString.string substringWithRange:match.range];
@@ -513,27 +527,33 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 
 - (void)addCodeUnescapingParsingWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
     [self addEnclosedParsingWithPattern:TSMarkdownCodeEscapingRegex formattingBlock:^(NSMutableAttributedString *attributedString, NSRange range) {
-        NSUInteger i = 0;
-        NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
-        NSMutableString *unescapedString = [NSMutableString string];
-        while (i < range.length) {
-            [unescapedString appendString:[TSMarkdownParser stringWithHexaString:matchString atIndex:i]];
-            i += 4;
+        if (self.markdownSyntaxRemoved) {
+            NSUInteger i = 0;
+            NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
+            NSMutableString *unescapedString = [NSMutableString string];
+            while (i < range.length) {
+                [unescapedString appendString:[TSMarkdownParser stringWithHexaString:matchString atIndex:i]];
+                i += 4;
+            }
+            [attributedString replaceCharactersInRange:range withString:unescapedString];
+            
+            // formatting string (may alter the length)
+            formattingBlock(attributedString, NSMakeRange(range.location, unescapedString.length));
+        } else {
+            formattingBlock(attributedString, range);
         }
-        [attributedString replaceCharactersInRange:range withString:unescapedString];
-        
-        // formatting string (may alter the length)
-        formattingBlock(attributedString, NSMakeRange(range.location, unescapedString.length));
     }];
 }
 
 - (void)addUnescapingParsing {
     NSRegularExpression *unescapingParsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownUnescapingRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
     [self addParsingRuleWithRegularExpression:unescapingParsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-        NSRange range = NSMakeRange(match.range.location + 1, 4);
-        NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
-        NSString *unescapedString = [TSMarkdownParser stringWithHexaString:matchString atIndex:0];
-        [attributedString replaceCharactersInRange:match.range withString:unescapedString];
+        if (self.markdownSyntaxRemoved) {
+            NSRange range = NSMakeRange(match.range.location + 1, 4);
+            NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
+            NSString *unescapedString = [TSMarkdownParser stringWithHexaString:matchString atIndex:0];
+            [attributedString replaceCharactersInRange:match.range withString:unescapedString];
+        }
     }];
 }
 
