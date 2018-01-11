@@ -255,7 +255,7 @@ static NSString *const TSMarkdownLinkRegex          = @"\\[[^\\[]*?\\]\\([^\\)]*
 
 // inline enclosed regex
 static NSString *const TSMarkdownMonospaceRegex     = @"(`+)(\\s*.*?[^`]\\s*)(\\1)(?!`)";
-static NSString *const TSMarkdownStrongRegex        = @"(?<!\\*|_)(\\*\\*|__)(?<!\\*|_)(.+?)(\\1)";
+static NSString *const TSMarkdownStrongRegex        = @"(?<!\\*|_)(\\*\\*|__)(?!\\*|_)(.+?)(\\1)";
 static NSString *const TSMarkdownEmRegex            = @"(?<!\\*|_)(\\*|_)(?!\\*|_)(.+?)(\\1)";
 static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+?)(\\3)(\\2)(\\1)";
 
