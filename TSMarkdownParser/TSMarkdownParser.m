@@ -265,7 +265,7 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
     NSRegularExpression *parsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownCodeEscapingRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
     __weak TSMarkdownParser *weakParser = self;
     [self addParsingRuleWithRegularExpression:parsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-        if (self.markdownSyntaxRemoved) {
+        if (weakParser.markdownSyntaxRemoved) {
             NSRange range = [match rangeAtIndex:2];
             // escaping all characters
             NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
@@ -283,8 +283,9 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 
 - (void)addEscapingParsing {
     NSRegularExpression *escapingParsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownEscapingRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
+    __weak TSMarkdownParser *weakParser = self;
     [self addParsingRuleWithRegularExpression:escapingParsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-        if (self.markdownSyntaxRemoved) {
+        if (weakParser.markdownSyntaxRemoved) {
             NSRange range = NSMakeRange(match.range.location + 1, 1);
             // escaping one character
             NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
@@ -444,8 +445,9 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 // pattern matching should be three parts: (leadingMD)(string)(trailingMD)
 - (void)addEnclosedParsingWithPattern:(NSString *)pattern formattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
     NSRegularExpression *parsing = [NSRegularExpression regularExpressionWithPattern:pattern options:(NSRegularExpressionOptions)0 error:nil];
+    __weak TSMarkdownParser *weakParser = self;
     [self addParsingRuleWithRegularExpression:parsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-        if (self.markdownSyntaxRemoved) {
+        if (weakParser.markdownSyntaxRemoved) {
             // deleting trailing markdown
             [attributedString deleteCharactersInRange:[match rangeAtIndex:3]];
             // formatting string (may alter the length)
@@ -473,8 +475,9 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 // pattern matching is in multiple parts: (MD1)(MD2)(MD3)(string)(MD3)(MD2)(MD1), e.g. _**text**_, *__text__*, ***text***, ___text___
 - (void)addStrongAndEmphasisParsingWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
     NSRegularExpression *parsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownStrongEmRegex options:(NSRegularExpressionOptions)0 error:nil];
+    __weak TSMarkdownParser *weakParser = self;
     [self addParsingRuleWithRegularExpression:parsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-        if (self.markdownSyntaxRemoved) {
+        if (weakParser.markdownSyntaxRemoved) {
             // deleting trailing markdown
             [attributedString deleteCharactersInRange:[match rangeAtIndex:7]];
             [attributedString deleteCharactersInRange:[match rangeAtIndex:6]];
@@ -526,8 +529,9 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 }
 
 - (void)addCodeUnescapingParsingWithFormattingBlock:(TSMarkdownParserFormattingBlock)formattingBlock {
+    __weak TSMarkdownParser *weakParser = self;
     [self addEnclosedParsingWithPattern:TSMarkdownCodeEscapingRegex formattingBlock:^(NSMutableAttributedString *attributedString, NSRange range) {
-        if (self.markdownSyntaxRemoved) {
+        if (weakParser.markdownSyntaxRemoved) {
             NSUInteger i = 0;
             NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
             NSMutableString *unescapedString = [NSMutableString string];
@@ -547,8 +551,9 @@ static NSString *const TSMarkdownStrongEmRegex      = @"(\\*|_)(\\*|_)(\\*|_)(.+
 
 - (void)addUnescapingParsing {
     NSRegularExpression *unescapingParsing = [NSRegularExpression regularExpressionWithPattern:TSMarkdownUnescapingRegex options:NSRegularExpressionDotMatchesLineSeparators error:nil];
+    __weak TSMarkdownParser *weakParser = self;
     [self addParsingRuleWithRegularExpression:unescapingParsing block:^(NSTextCheckingResult *match, NSMutableAttributedString *attributedString) {
-        if (self.markdownSyntaxRemoved) {
+        if (weakParser.markdownSyntaxRemoved) {
             NSRange range = NSMakeRange(match.range.location + 1, 4);
             NSString *matchString = [attributedString attributedSubstringFromRange:range].string;
             NSString *unescapedString = [TSMarkdownParser stringWithHexaString:matchString atIndex:0];
