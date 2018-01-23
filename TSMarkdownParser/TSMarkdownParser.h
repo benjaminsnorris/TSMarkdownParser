@@ -47,7 +47,11 @@ typedef void (^TSMarkdownParserLinkFormattingBlock)(NSMutableAttributedString *a
 @property (nonatomic, assign) BOOL skipLinkAttribute;
 
 /**
- 
+ * Setting for removing or preserving markdown syntax in a string. Defaults to `YES`.
+ *
+ * When `YES`, the formatted string that is returned has attributes but no syntax.
+ *
+ * When `NO`, the formatting syntax is preserved, and attributes are added.
  */
 @property (nonatomic, readonly) BOOL markdownSyntaxRemoved;
 
@@ -67,7 +71,9 @@ typedef void (^TSMarkdownParserLinkFormattingBlock)(NSMutableAttributedString *a
 + (instancetype)standardParser;
 
 /**
- 
+ * Allows for creating a standard parser which specifying whether to preserve or remove markdown syntax.
+ *
+ * When using `[TSMarkdownParser standardParser]`, `markdownSyntaxRemoved` is set to `YES`.
  */
 + (instancetype)standardParserRemovingSyntax:(BOOL)markdownSyntaxRemoved;
 
